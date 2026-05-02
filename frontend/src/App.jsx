@@ -135,7 +135,7 @@ export default function App() {
         />
       }
     >
-      <div className="max-w-4xl w-full px-6 pt-20 pb-5 flex flex-col justify-between select-none">
+      <div className="max-w-4xl w-full px-6 pt-20 pb-5 flex flex-col justify-between select-none min-h-screen">
         <div>
           {/* Header */}
           <div className="flex items-center gap-2 mb-8 select-none justify-center">

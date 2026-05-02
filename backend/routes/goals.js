@@ -29,10 +29,9 @@ router.post('/', async (req, res) => {
         // Initialize Gemini
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-        // Note: If 'gemini-2.5-flash-lite' throws a 404 error, use 'gemini-1.5-flash'
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
-        // The updated dynamic prompt:
+        // Dynamic prompt
         const prompt = `Analyze the goal '${title}' and break it down into very small, highly actionable, easy first steps. You decide the appropriate number of steps based on the complexity of the goal (e.g., a simple task might only need 2 steps, a complex one might need 5 or more). Return ONLY a valid JSON array of strings, like ["step 1", "step 2"]. No markdown, no intro.`;
 
         const result = await model.generateContent(prompt);
