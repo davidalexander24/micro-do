@@ -24,7 +24,7 @@ export default function Layout({ sidebar, children }) {
       )}
 
       {/* Main content area */}
-      <div className="flex-1 h-screen overflow-y-auto flex flex-col items-center justify-start relative select-none w-full">
+      <div className="flex-1 h-screen overflow-y-auto flex justify-center relative select-none w-full">
         {/* Toggle Sidebar Button (Desktop & Mobile) */}
         <div className="absolute top-4 left-4 z-30 flex items-center">
           <button
