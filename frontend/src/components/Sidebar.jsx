@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Clock, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
+import { PlusCircle, Search, Clock, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 
 export default function Sidebar({ goals, onSelectNewGoal, onSelectGoal, searchQuery, setSearchQuery, defaultExpanded = false, onCloseSidebar }) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
@@ -37,11 +37,11 @@ export default function Sidebar({ goals, onSelectNewGoal, onSelectGoal, searchQu
               onSelectNewGoal();
               if (onCloseSidebar) onCloseSidebar();
             }}
-            className="flex items-center justify-between bg-white border border-[#E1E0DD] hover:border-[#D1D0CC] hover:bg-[#F3F2F0] text-[#1F2937] font-medium px-4 py-2.5 rounded-xl shadow-sm transition mb-6 select-none cursor-pointer"
+            className="flex items-center justify-start bg-white border border-[#E1E0DD] hover:border-[#D1D0CC] hover:bg-[#F3F2F0] text-[#1F2937] font-medium px-4 py-2.5 rounded-xl shadow-sm transition mb-6 select-none cursor-pointer w-full"
           >
-            <div className="flex items-center gap-3">
-              <Plus className="w-4.5 h-4.5 text-[#6B7280]" />
-              <span className="text-[14px]">New goal</span>
+            <div className="flex items-center gap-3 leading-none">
+              <PlusCircle className="w-5 h-5 text-[#6B7280] flex-shrink-0" />
+              <span className="text-[14px] leading-none">New goal</span>
             </div>
           </button>
 
@@ -102,7 +102,7 @@ export default function Sidebar({ goals, onSelectNewGoal, onSelectGoal, searchQu
             className="p-2 bg-white hover:bg-[#F3F2F0] border border-[#E1E0DD] hover:border-[#CDCBC7] text-[#6B7280] hover:text-[#374151] rounded-xl shadow-sm hover:shadow-md transition cursor-pointer flex items-center justify-center"
             title="New goal"
           >
-            <Plus className="w-5 h-5" />
+            <PlusCircle className="w-5 h-5" />
           </button>
 
           {/* Search trigger */}
