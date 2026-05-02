@@ -5,7 +5,7 @@ import GoalForm from './components/GoalForm';
 import GoalCard from './components/GoalCard';
 import { AlertTriangle, Sparkles } from 'lucide-react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export default function App() {
   const [goals, setGoals] = useState([]);
@@ -18,7 +18,7 @@ export default function App() {
   const fetchGoals = async () => {
     try {
       setError(null);
-      const res = await fetch(`${API_BASE_URL}/api/goals`);
+      const res = await fetch(`${API_BASE}/goals`);
       if (!res.ok) {
         throw new Error('Could not retrieve existing goals');
       }
@@ -42,7 +42,7 @@ export default function App() {
       setIsGenerating(true);
       setError(null);
 
-      const res = await fetch(`${API_BASE_URL}/api/goals`, {
+      const res = await fetch(`${API_BASE}/goals`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, useAI }),
@@ -79,7 +79,7 @@ export default function App() {
         })
       );
 
-      const res = await fetch(`${API_BASE_URL}/api/goals/${goalId}/steps/${stepId}`, {
+      const res = await fetch(`${API_BASE}/goals/${goalId}/steps/${stepId}`, {
         method: 'PATCH',
       });
 
@@ -103,7 +103,7 @@ export default function App() {
     try {
       setGoals((prevGoals) => prevGoals.filter((g) => g._id !== id));
 
-      const res = await fetch(`${API_BASE_URL}/api/goals/${id}`, {
+      const res = await fetch(`${API_BASE}/goals/${id}`, {
         method: 'DELETE',
       });
 
