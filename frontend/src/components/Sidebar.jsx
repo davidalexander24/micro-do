@@ -6,7 +6,7 @@ export default function Sidebar({ goals, onSelectNewGoal, onSelectGoal, searchQu
   const recentGoals = goals.slice(0, 5);
 
   return (
-    <aside className="w-72 h-screen bg-[#F9F9F8] border-r border-[#EBEAE8] flex flex-col justify-between font-sans text-[#374151] select-none flex-shrink-0">
+    <div className="w-full h-full flex flex-col justify-between font-sans text-[#374151] select-none flex-shrink-0 bg-[#F9F9F8]">
 
       {/* Top Part */}
       <div className="flex flex-col flex-1 overflow-y-auto px-4 py-6">
@@ -64,6 +64,6 @@ export default function Sidebar({ goals, onSelectNewGoal, onSelectGoal, searchQu
         )}
       </div>
 
-    </aside>
+    </div>
   );
 }
