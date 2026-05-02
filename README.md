@@ -8,7 +8,7 @@
 
 <br>
 MicroDo is a minimalist, AI-powered web application that helps users stop procrastinating by automatically breaking down large, complex goals into highly actionable micro-steps. 
-
+<br></br>
 This full-stack project integrates a React frontend with an Express backend, utilizing AI to dynamically process and generate tasks.
 
 ## ✨ Features
