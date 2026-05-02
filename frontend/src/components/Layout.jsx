@@ -5,13 +5,11 @@ export default function Layout({ sidebar, children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   return (
-    <div className="flex w-full min-h-screen bg-white text-[#374151] font-sans relative overflow-x-hidden">
+    <div className="flex w-screen min-h-screen bg-white text-[#374151] font-sans relative overflow-x-hidden">
       {/* Sidebar container with sliding behavior for desktop and mobile */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 transform ${
-          isSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full'
-        } md:relative md:translate-x-0 transition duration-300 ease-in-out flex flex-shrink-0 border-r border-[#EBEAE8] bg-[#F9F9F8] h-screen ${
-          !isSidebarOpen && 'md:hidden'
+        className={`fixed inset-y-0 left-0 z-50 transform transition duration-300 ease-in-out flex flex-shrink-0 border-r border-[#EBEAE8] bg-[#F9F9F8] h-screen ${
+          isSidebarOpen ? 'translate-x-0 w-72 md:relative md:translate-x-0' : '-translate-x-full w-0 overflow-hidden md:hidden'
         }`}
       >
         {sidebar}
@@ -26,7 +24,7 @@ export default function Layout({ sidebar, children }) {
       )}
 
       {/* Main content area */}
-      <div className="flex-1 h-screen overflow-y-auto flex flex-col relative select-none">
+      <div className="flex-1 h-screen overflow-y-auto flex flex-col items-center justify-start relative select-none w-full">
         {/* Toggle Sidebar Button (Desktop & Mobile) */}
         <div className="absolute top-4 left-4 z-30 flex items-center">
           <button
