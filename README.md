@@ -2,7 +2,7 @@
 
 **Set big goals. Get micro-steps.**
 
-### 🌍 **[Live Demo: micro-do.vercel.app](https://micro-do.vercel.app/)**
+### 🔗 **Live Demo: [micro-do.vercel.app](https://micro-do.vercel.app/)**
 
 <img width="1919" height="1079" alt="Page screenshot" src="https://github.com/user-attachments/assets/3ae8db70-507f-453e-86f5-54a7f8206882"/>
 
