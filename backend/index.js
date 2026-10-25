@@ -68,8 +68,8 @@ app.get('/api/health', requireDB, async (req, res) => {
 // Export for Vercel Serverless Functions
 module.exports = app;
 
-// Listen only when running locally (not in production)
-if (process.env.NODE_ENV !== 'production') {
+// Listen only when run directly (node index.js), not when Vercel or the tests import the app
+if (require.main === module) {
   const PORT = process.env.PORT || 5001;
   app.listen(PORT, () => {
     console.log(`Backend server is running on port ${PORT}`);
