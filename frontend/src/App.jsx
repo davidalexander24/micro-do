@@ -7,6 +7,28 @@ import { AlertTriangle, Sparkles } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
+// Mirrors the backend toggle: a parent flips its whole subtree, then completion rolls up to its ancestors
+const applyToggle = (steps, stepId) => {
+  const next = steps.map((s) => ({ ...s }));
+  const byId = new Map(next.map((s) => [s._id, s]));
+  const childrenOf = (id) => next.filter((s) => (s.parentId ?? null) === id);
+
+  const step = byId.get(stepId);
+  if (!step) return steps;
+
+  const value = !step.isCompleted;
+  const mark = (s) => {
+    s.isCompleted = value;
+    childrenOf(s._id).forEach(mark);
+  };
+  mark(step);
+
+  for (let p = byId.get(step.parentId); p; p = byId.get(p.parentId)) {
+    p.isCompleted = childrenOf(p._id).every((c) => c.isCompleted);
+  }
+  return next;
+};
+
 export default function App() {
   const [goals, setGoals] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -26,7 +48,7 @@ export default function App() {
       setGoals(data);
     } catch (err) {
       console.error(err);
-      setError('Failed to load goals. Is the backend server running locally?');
+      setError('Failed to load goals. Please refresh the page to try again.');
     } finally {
       setIsLoading(false);
     }
@@ -69,13 +91,7 @@ export default function App() {
       setGoals((prevGoals) =>
         prevGoals.map((goal) => {
           if (goal._id !== goalId) return goal;
-          return {
-            ...goal,
-            steps: goal.steps.map((step) => {
-              if (step._id !== stepId) return step;
-              return { ...step, isCompleted: !step.isCompleted };
-            }),
-          };
+          return { ...goal, steps: applyToggle(goal.steps, stepId) };
         })
       );
 
@@ -95,6 +111,30 @@ export default function App() {
       console.error(err);
       setError('Failed to update the step. Please try again.');
       fetchGoals();
+    }
+  };
+
+  // Break one step down into AI-generated sub-steps
+  const breakDownStep = async (goalId, stepId) => {
+    try {
+      setError(null);
+
+      const res = await fetch(`${API_BASE}/goals/${goalId}/steps/${stepId}/breakdown`, {
+        method: 'POST',
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to break down the step');
+      }
+
+      const updatedGoal = await res.json();
+      setGoals((prevGoals) =>
+        prevGoals.map((g) => (g._id === goalId ? updatedGoal : g))
+      );
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'Failed to break down the step. Please try again.');
     }
   };
 
@@ -220,6 +260,7 @@ export default function App() {
                     goal={goal}
                     onToggleStep={toggleStep}
                     onDeleteGoal={deleteGoal}
+                    onBreakDownStep={breakDownStep}
                   />
                 </div>
               ))}

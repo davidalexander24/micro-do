@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 
 const stepSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  isCompleted: { type: Boolean, default: false }
+  isCompleted: { type: Boolean, default: false },
+  parentId: { type: mongoose.Schema.Types.ObjectId, default: null },
+  depth: { type: Number, default: 0 }
 });
 
 const goalSchema = new mongoose.Schema({
