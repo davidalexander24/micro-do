@@ -6,27 +6,49 @@ const goalsRouter = require('./routes/goals');
 
 const app = express();
 
+// Database connection
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.warn('Warning: MONGODB_URI environment variable is not defined.');
+}
+
+// Connect on first use and retry after a failure, so one failed cold start
+// can't leave a serverless instance without a database until it is recycled
+let connection = null;
+
+const connectDB = () => {
+  if (!connection) {
+    connection = mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
+      .then(() => console.log('Successfully connected to MongoDB.'))
+      .catch((err) => {
+        connection = null;
+        throw err;
+      });
+  }
+  return connection;
+};
+
+const requireDB = async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    res.status(503).json({ error: 'Database unavailable' });
+  }
+};
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/goals', goalsRouter);
+app.use('/api/goals', requireDB, goalsRouter);
 
 app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the MicroDo API' });
 });
-
-// Database connection
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (MONGODB_URI) {
-  mongoose.connect(MONGODB_URI)
-    .then(() => console.log('Successfully connected to MongoDB.'))
-    .catch((err) => console.error('MongoDB connection error:', err));
-} else {
-  console.warn('Warning: MONGODB_URI environment variable is not defined.');
-}
 
 // Export for Vercel Serverless Functions
 module.exports = app;
