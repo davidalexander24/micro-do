@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Trash, CheckSquare, Square, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import confetti from 'canvas-confetti';
+import { Trash, CheckSquare, Square, Sparkles, CircleCheck } from 'lucide-react';
 
 // Matches the backend limit: step -> sub-step -> micro-step
 const MAX_DEPTH = 2;
@@ -14,6 +15,29 @@ export default function GoalCard({ goal, onToggleStep, onDeleteGoal, onBreakDown
   const completedCount = leaves.filter((s) => s.isCompleted).length;
   const totalCount = leaves.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const isComplete = progressPercent === 100;
+
+  const cardRef = useRef(null);
+  const prevPercent = useRef(null);
+
+  // Celebrate only when the user finishes the goal, not when a finished goal loads
+  useEffect(() => {
+    if (prevPercent.current !== null && prevPercent.current < 100 && isComplete && cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      confetti({
+        particleCount: 90,
+        spread: 70,
+        startVelocity: 35,
+        origin: {
+          x: (rect.left + rect.width / 2) / window.innerWidth,
+          y: (rect.top + rect.height / 2) / window.innerHeight,
+        },
+        colors: ['#D97706', '#F59E0B', '#FDE68A', '#10B981'],
+        disableForReducedMotion: true,
+      });
+    }
+    prevPercent.current = progressPercent;
+  }, [progressPercent, isComplete]);
 
   const breakDown = async (e, stepId) => {
     e.stopPropagation();
@@ -23,14 +47,14 @@ export default function GoalCard({ goal, onToggleStep, onDeleteGoal, onBreakDown
   };
 
   const renderSteps = (parentId) =>
-    childrenOf(parentId).map((step) => {
+    childrenOf(parentId).map((step, index) => {
       const isDone = step.isCompleted;
       const hasChildren = childrenOf(step._id).length > 0;
       const isBreaking = breakingId === step._id;
       const canBreakDown = !hasChildren && !isDone && (step.depth ?? 0) < MAX_DEPTH;
 
       return (
-        <div key={step._id} className="animate-fade-in">
+        <div key={step._id} className="animate-fade-in" style={{ animationDelay: `${index * 60}ms` }}>
           <div
             onClick={() => onToggleStep(goal._id, step._id)}
             className="group flex items-start gap-3 p-2 hover:bg-[#F9FAFB] rounded-xl cursor-pointer transition duration-150 select-none border border-transparent"
@@ -86,13 +110,26 @@ export default function GoalCard({ goal, onToggleStep, onDeleteGoal, onBreakDown
     });
 
   return (
-    <div className="bg-white border border-[#EBEAE8] rounded-2xl p-5 hover:shadow-md transition duration-300 font-sans select-none flex flex-col justify-between hover:border-[#CDCBC7]">
+    <div
+      ref={cardRef}
+      className={`bg-white border rounded-2xl p-5 hover:shadow-md transition duration-300 font-sans select-none flex flex-col justify-between ${
+        isComplete ? 'border-[#A7F3D0] hover:border-[#6EE7B7]' : 'border-[#EBEAE8] hover:border-[#CDCBC7]'
+      }`}
+    >
 
       {/* Card Header: Title & Delete */}
       <div className="flex justify-between items-start gap-3 mb-4">
-        <h3 className="text-[16px] font-bold text-[#1F2937] break-words flex-1 leading-normal">
-          {goal.title}
-        </h3>
+        <div className="flex-1">
+          <h3 className="text-[16px] font-bold text-[#1F2937] break-words leading-normal">
+            {goal.title}
+          </h3>
+          {isComplete && (
+            <span className="animate-fade-in inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 text-[11.5px] font-semibold text-[#047857] bg-[#ECFDF5] border border-[#A7F3D0] rounded-lg">
+              <CircleCheck className="w-3.5 h-3.5" />
+              Completed
+            </span>
+          )}
+        </div>
         <button
           onClick={() => onDeleteGoal(goal._id)}
           className="p-1.5 text-[#9CA3AF] hover:text-[#EF4444] hover:bg-[#FEE2E2]/60 rounded-xl transition duration-150 flex-shrink-0 cursor-pointer"
@@ -112,7 +149,7 @@ export default function GoalCard({ goal, onToggleStep, onDeleteGoal, onBreakDown
         <div className="flex items-center gap-3">
           <div className="w-20 bg-[#F3F2F0] h-1 rounded-full overflow-hidden">
             <div
-              className="bg-[#D97706] h-full transition-all duration-300"
+              className={`${isComplete ? 'bg-[#10B981]' : 'bg-[#D97706]'} h-full transition-all duration-300`}
               style={{ width: `${progressPercent}%` }}
             ></div>
           </div>
