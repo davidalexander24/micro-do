@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const goalsRouter = require('./routes/goals');
+const Goal = require('./models/Goal');
 
 const app = express();
 
@@ -48,6 +49,18 @@ app.use('/api/goals', requireDB, goalsRouter);
 
 app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the MicroDo API' });
+});
+
+// Health check, called daily by the Vercel cron in vercel.json so the
+// free Atlas cluster always sees activity and is never paused as idle
+app.get('/api/health', requireDB, async (req, res) => {
+  try {
+    await Goal.countDocuments();
+    res.json({ status: 'ok' });
+  } catch (err) {
+    console.error('Health check failed:', err);
+    res.status(500).json({ status: 'error' });
+  }
 });
 
 // Export for Vercel Serverless Functions
