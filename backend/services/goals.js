@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Goal = require('../models/Goal');
+const { checkAiQuota } = require('./rateLimit');
 const { GoogleGenerativeAI, SchemaType } = require('@google/generative-ai');
 
 // Steps can be broken down twice: step -> sub-step -> micro-step
@@ -48,6 +49,13 @@ const generateSteps = async (systemInstruction, input) => {
   return steps;
 };
 
+const requireAiQuota = async (ownerId) => {
+  const reason = await checkAiQuota(ownerId);
+  if (reason) {
+    throw new ServiceError(429, reason);
+  }
+};
+
 const childrenOf = (steps, id) => steps.filter((s) => String(s.parentId) === String(id));
 
 const descendantsOf = (steps, id) =>
@@ -83,6 +91,7 @@ const createGoal = async (ownerId, title, useAI = true) => {
   let steps = [];
 
   if (useAI !== false) {
+    await requireAiQuota(ownerId);
     try {
       steps = (await generateSteps(GOAL_INSTRUCTION, trimmed)).slice(0, 6);
     } catch (aiError) {
@@ -126,6 +135,8 @@ const breakDownStep = async (ownerId, goalId, stepId) => {
     .filter((s) => String(s.parentId) === String(step.parentId) && String(s._id) !== String(step._id))
     .map((s) => `- ${s.title}`)
     .join('\n');
+
+  await requireAiQuota(ownerId);
 
   let titles;
   try {
