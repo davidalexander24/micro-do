@@ -8,6 +8,7 @@ const stepSchema = new mongoose.Schema({
 });
 
 const goalSchema = new mongoose.Schema({
+  ownerId: { type: String, required: true, index: true },
   title: { type: String, required: true },
   createdAt: { type: Date, default: Date.now },
   steps: [stepSchema]

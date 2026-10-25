@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const goalsRouter = require('./routes/goals');
+const mcpRouter = require('./routes/mcp');
 const Goal = require('./models/Goal');
 
 const app = express();
@@ -46,6 +47,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/goals', requireDB, goalsRouter);
+app.use('/api/mcp', requireDB, mcpRouter);
 
 app.get('/api', (req, res) => {
   res.json({ message: 'Welcome to the MicroDo API' });

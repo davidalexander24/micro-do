@@ -3,9 +3,34 @@ import Sidebar from './components/Sidebar';
 import Layout from './components/Layout';
 import GoalForm from './components/GoalForm';
 import GoalCard from './components/GoalCard';
+import ConnectAgent from './components/ConnectAgent';
 import { AlertTriangle, Sparkles } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+const MCP_URL = new URL(`${API_BASE}/mcp`, window.location.origin).href;
+
+// A random id per browser keeps each visitor's list private; it doubles as the MCP key
+const getClientId = () => {
+  const fresh = () => crypto.randomUUID();
+  try {
+    let id = localStorage.getItem('microdo-client-id');
+    if (!id) {
+      id = fresh();
+      localStorage.setItem('microdo-client-id', id);
+    }
+    return id;
+  } catch {
+    return fresh();
+  }
+};
+
+const CLIENT_ID = getClientId();
+
+const api = (path, options = {}) =>
+  fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { ...options.headers, 'X-Client-Id': CLIENT_ID },
+  });
 
 // Mirrors the backend toggle: a parent flips its whole subtree, then completion rolls up to its ancestors
 const applyToggle = (steps, stepId) => {
@@ -40,7 +65,7 @@ export default function App() {
   const fetchGoals = async () => {
     try {
       setError(null);
-      const res = await fetch(`${API_BASE}/goals`);
+      const res = await api('/goals');
       if (!res.ok) {
         throw new Error('Could not retrieve existing goals');
       }
@@ -56,6 +81,11 @@ export default function App() {
 
   useEffect(() => {
     fetchGoals();
+
+    // Pick up changes an AI agent made over MCP while the tab was in the background
+    const onFocus = () => fetchGoals();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
 
   // Add a new goal (calls the AI endpoint)
@@ -64,7 +94,7 @@ export default function App() {
       setIsGenerating(true);
       setError(null);
 
-      const res = await fetch(`${API_BASE}/goals`, {
+      const res = await api('/goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, useAI }),
@@ -95,7 +125,7 @@ export default function App() {
         })
       );
 
-      const res = await fetch(`${API_BASE}/goals/${goalId}/steps/${stepId}`, {
+      const res = await api(`/goals/${goalId}/steps/${stepId}`, {
         method: 'PATCH',
       });
 
@@ -119,7 +149,7 @@ export default function App() {
     try {
       setError(null);
 
-      const res = await fetch(`${API_BASE}/goals/${goalId}/steps/${stepId}/breakdown`, {
+      const res = await api(`/goals/${goalId}/steps/${stepId}/breakdown`, {
         method: 'POST',
       });
 
@@ -143,7 +173,7 @@ export default function App() {
     try {
       setGoals((prevGoals) => prevGoals.filter((g) => g._id !== id));
 
-      const res = await fetch(`${API_BASE}/goals/${id}`, {
+      const res = await api(`/goals/${id}`, {
         method: 'DELETE',
       });
 
@@ -178,10 +208,11 @@ export default function App() {
       <div className="max-w-4xl w-full px-6 pt-20 pb-5 flex flex-col justify-between select-none min-h-screen">
         <div>
           {/* Header */}
-          <div className="flex items-center gap-2 mb-8 select-none justify-center">
+          <div className="flex flex-col items-center gap-4 mb-8 select-none justify-center">
             <h2 className="text-3xl sm:text-4xl font-serif tracking-tight text-[#1F2937] leading-tight">
               MicroDo <span className="text-[#9CA3AF] font-normal font-sans">/</span> <span className="italic font-normal text-[#4B5563]">Set big goals.</span>
             </h2>
+            <ConnectAgent clientId={CLIENT_ID} mcpUrl={MCP_URL} />
           </div>
 
           {/* Goal Input form */}
