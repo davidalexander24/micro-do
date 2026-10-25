@@ -42,10 +42,11 @@ router.post('/:goalId/steps/:stepId/breakdown', handle(async (req, res) => {
   res.status(201).json(await goals.breakDownStep(req.ownerId, goalId, stepId));
 }, 'Failed to break down step'));
 
-// PATCH /api/goals/:goalId/steps/:stepId: Toggle isCompleted for a specific step
+// PATCH /api/goals/:goalId/steps/:stepId: Set { completed } on a step, or toggle it without a body
 router.patch('/:goalId/steps/:stepId', handle(async (req, res) => {
   const { goalId, stepId } = req.params;
-  res.json(await goals.setStepCompleted(req.ownerId, goalId, stepId));
+  const completed = req.body && typeof req.body.completed === 'boolean' ? req.body.completed : undefined;
+  res.json(await goals.setStepCompleted(req.ownerId, goalId, stepId, completed));
 }, 'Failed to update step'));
 
 // DELETE /api/goals/:id: Deletes a goal and its steps

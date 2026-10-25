@@ -118,6 +118,10 @@ export default function App() {
   // Toggle a step's isCompleted status
   const toggleStep = async (goalId, stepId) => {
     try {
+      const step = goals.find((g) => g._id === goalId)?.steps.find((s) => s._id === stepId);
+      if (!step) return;
+      const completed = !step.isCompleted;
+
       setGoals((prevGoals) =>
         prevGoals.map((goal) => {
           if (goal._id !== goalId) return goal;
@@ -125,18 +129,18 @@ export default function App() {
         })
       );
 
+      // The request sends the target state, so repeated or reordered requests can't flip it back.
+      // The local update already matches the server's rules, so replies are not applied: a slow
+      // reply would overwrite newer ticks. On failure the list is reloaded from the server.
       const res = await api(`/goals/${goalId}/steps/${stepId}`, {
         method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed }),
       });
 
       if (!res.ok) {
         throw new Error('Failed to update micro-step status');
       }
-
-      const updatedGoal = await res.json();
-      setGoals((prevGoals) =>
-        prevGoals.map((g) => (g._id === goalId ? updatedGoal : g))
-      );
     } catch (err) {
       console.error(err);
       setError('Failed to update the step. Please try again.');

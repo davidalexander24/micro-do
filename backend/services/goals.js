@@ -23,20 +23,39 @@ class ServiceError extends Error {
 
 const isValidClientId = (id) => typeof id === 'string' && CLIENT_ID_PATTERN.test(id);
 
-// Gemini returns a JSON array of step titles, enforced by a response schema
-const generateSteps = async (systemInstruction, input) => {
+// Free-tier quotas are per model (2.5 Flash-Lite: 20 requests a day, 3.5 Flash-Lite: 500), so the
+// fast model goes first and the next one takes over when it fails or runs out
+const MODELS = [
+  { name: 'gemini-2.5-flash-lite', timeout: 15000 },
+  { name: 'gemini-3.5-flash-lite', timeout: 20000, thinkingConfig: { thinkingLevel: 'minimal' } }
+];
+
+// Models Google reported as out of quota, skipped until the retry time it gave
+const coolingUntil = new Map();
+
+const retryDelayMs = (error) => {
+  const info = (error.errorDetails || []).find((d) => d && d.retryDelay);
+  const seconds = info && parseFloat(info.retryDelay);
+  return seconds > 0 ? seconds * 1000 : 0;
+};
+
+const callModel = async ({ name, timeout, thinkingConfig }, systemInstruction, input) => {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash-lite',
-    systemInstruction,
-    generationConfig: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: SchemaType.ARRAY,
-        items: { type: SchemaType.STRING }
+  const model = genAI.getGenerativeModel(
+    {
+      model: name,
+      systemInstruction,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: SchemaType.ARRAY,
+          items: { type: SchemaType.STRING }
+        },
+        ...(thinkingConfig && { thinkingConfig })
       }
-    }
-  });
+    },
+    { timeout }
+  );
 
   const result = await model.generateContent(input);
   const steps = JSON.parse(result.response.text())
@@ -48,6 +67,27 @@ const generateSteps = async (systemInstruction, input) => {
   }
   return steps;
 };
+
+// Gemini returns a JSON array of step titles, enforced by a response schema
+const generateSteps = async (systemInstruction, input) => {
+  let lastError = new Error('Every model is cooling down after hitting its quota');
+
+  for (const model of MODELS) {
+    if ((coolingUntil.get(model.name) || 0) > Date.now()) continue;
+    try {
+      return await callModel(model, systemInstruction, input);
+    } catch (error) {
+      console.error(`${model.name} failed, trying the next model:`, error.message);
+      if (error.status === 429 && retryDelayMs(error) > 0) {
+        coolingUntil.set(model.name, Date.now() + retryDelayMs(error));
+      }
+      lastError = error;
+    }
+  }
+  throw lastError;
+};
+
+const AI_UNAVAILABLE = 'MicroDo AI is busy right now. Please try again in a minute, or untick "Use MicroDo AI".';
 
 const requireAiQuota = async (ownerId) => {
   const reason = await checkAiQuota(ownerId);
@@ -95,12 +135,9 @@ const createGoal = async (ownerId, title, useAI = true) => {
     try {
       steps = (await generateSteps(GOAL_INSTRUCTION, trimmed)).slice(0, 6);
     } catch (aiError) {
-      console.error('AI step generation failed, using fallbacks:', aiError);
-      steps = [
-        `Identify first micro-action for: ${trimmed}`,
-        `Execute and track progress`,
-        `Review completion of ${trimmed}`
-      ];
+      // An honest error beats canned steps that look like AI output
+      console.error('AI step generation failed on every model:', aiError);
+      throw new ServiceError(503, AI_UNAVAILABLE);
     }
   } else {
     steps = [`Complete: ${trimmed}`];
@@ -145,8 +182,8 @@ const breakDownStep = async (ownerId, goalId, stepId) => {
       `Goal: ${goal.title}\nOther steps in the plan (context only):\n${siblings}\n\nBreak down only this step: ${path.join(' > ')}`
     );
   } catch (aiError) {
-    console.error('AI breakdown failed:', aiError);
-    throw new ServiceError(502, 'The AI could not break this step down. Please try again.');
+    console.error('AI breakdown failed on every model:', aiError);
+    throw new ServiceError(503, AI_UNAVAILABLE);
   }
 
   const subSteps = titles.slice(0, 5).map((title) => ({

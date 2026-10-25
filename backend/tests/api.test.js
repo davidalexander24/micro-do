@@ -5,14 +5,24 @@ const request = require('supertest');
 // Gemini is mocked: each test queues the step titles the "AI" returns
 jest.mock('@google/generative-ai', () => {
   const generateContent = jest.fn();
+  const getGenerativeModel = jest.fn(() => ({ generateContent }));
   return {
     SchemaType: { ARRAY: 'array', STRING: 'string' },
-    GoogleGenerativeAI: jest.fn(() => ({ getGenerativeModel: () => ({ generateContent }) })),
-    generateContent
+    GoogleGenerativeAI: jest.fn(() => ({ getGenerativeModel })),
+    generateContent,
+    getGenerativeModel
   };
 });
 
-const { generateContent } = require('@google/generative-ai');
+const { generateContent, getGenerativeModel } = require('@google/generative-ai');
+
+const modelsCalled = () => getGenerativeModel.mock.calls.map(([params]) => params.model);
+
+const quotaError = (retryDelay) =>
+  Object.assign(new Error('429 Too Many Requests'), {
+    status: 429,
+    errorDetails: retryDelay ? [{ retryDelay }] : []
+  });
 
 const aiReturns = (...lists) =>
   lists.forEach((steps) =>
@@ -53,6 +63,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   generateContent.mockReset();
+  getGenerativeModel.mockClear();
   if (mongoose.connection.readyState === 1) {
     await Promise.all(Object.values(mongoose.connection.collections).map((c) => c.deleteMany({})));
   }
@@ -73,12 +84,36 @@ describe('goals API', () => {
     expect(res.body.steps.map((s) => s.title)).toEqual(['1', '2', '3', '4', '5', '6']);
   });
 
-  test('falls back to default steps when the AI fails', async () => {
-    generateContent.mockRejectedValueOnce(new Error('Gemini down'));
+  test('falls back to the next model when the first one fails', async () => {
+    generateContent.mockRejectedValueOnce(quotaError());
+    aiReturns(['From the second model']);
     const res = await as(A).post('/api/goals', { title: 'Run a 5k' });
 
     expect(res.status).toBe(201);
-    expect(res.body.steps).toHaveLength(3);
+    expect(res.body.steps.map((s) => s.title)).toEqual(['From the second model']);
+    expect(modelsCalled()).toEqual(['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite']);
+  });
+
+  test('skips a model during its quota cooldown, then uses it again', async () => {
+    generateContent.mockRejectedValueOnce(quotaError('0.3s'));
+    aiReturns(['a'], ['b'], ['c']);
+
+    await as(A).post('/api/goals', { title: 'First' });
+    await as(A).post('/api/goals', { title: 'During cooldown' });
+    expect(modelsCalled()).toEqual(['gemini-2.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash-lite']);
+
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    await as(A).post('/api/goals', { title: 'After cooldown' });
+    expect(modelsCalled()[3]).toBe('gemini-2.5-flash-lite');
+  });
+
+  test('answers 503 instead of fake steps when every model fails', async () => {
+    generateContent.mockRejectedValue(new Error('Gemini down'));
+    const res = await as(A).post('/api/goals', { title: 'Run a 5k' });
+
+    expect(res.status).toBe(503);
+    expect(res.body.error).toMatch(/MicroDo AI is busy/);
+    expect((await as(A).get('/api/goals')).body).toHaveLength(0);
   });
 
   test('validates the title', async () => {
@@ -150,6 +185,15 @@ describe('breaking steps down', () => {
     expect(byTitle(reopened, 'a').isCompleted).toBe(false);
     expect(byTitle(reopened, 'Step one').isCompleted).toBe(false);
     expect(byTitle(reopened, 'b').isCompleted).toBe(true);
+  });
+
+  test('setting a target state is idempotent, so repeated requests cannot flip it back', async () => {
+    const goal = await createGoal();
+    const path = `/api/goals/${goal._id}/steps/${goal.steps[0]._id}`;
+
+    await as(A).patch(path).send({ completed: true });
+    const again = (await as(A).patch(path).send({ completed: true })).body;
+    expect(again.steps[0].isCompleted).toBe(true);
   });
 });
 
