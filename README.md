@@ -6,6 +6,10 @@
 
 ### 🔗 **Live Demo: [micro-do.vercel.app](https://micro-do.vercel.app/)**
 
+[![MicroDo demo](docs/demo.gif)](docs/demo.mp4)
+
+*Breaking a goal into AI micro-steps, breaking one step down further, checking everything off to 100%, then the Connect an AI agent dialog with the MCP setup for Claude Code and other clients. [▶ Watch full video (MP4)](docs/demo.mp4)*
+
 <img width="1919" height="1079" alt="Page screenshot" src="https://github.com/user-attachments/assets/3ae8db70-507f-453e-86f5-54a7f8206882"/>
 
 <br>
